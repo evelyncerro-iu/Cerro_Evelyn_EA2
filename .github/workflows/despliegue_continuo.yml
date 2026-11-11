@@ -1,0 +1,65 @@
+name: Pipeline de Despliegue Continuo (CD)
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  despliegue-produccion:
+    name: Compilacion y Despliegue a GitHub Pages
+    environment:
+      name: github-pages
+      url: ${{ steps.despliegue-oficial.outputs.page_url }}
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Descargar codigo fuente del repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar entorno de Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Instalar dependencias
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Ejecutar pruebas de validacion antes de desplegar
+        run: |
+          python -m pytest -v
+
+      - name: Ejecutar pipeline de generacion de catalogo y dashboard
+        run: |
+          python principal.py
+
+      - name: Configurar GitHub Pages
+        uses: actions/configure-pages@v4
+
+      - name: Cargar artefactos generados para GitHub Pages
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: "dist"
+
+      - name: Desplegar sitio en GitHub Pages
+        id: despliegue-oficial
+        uses: actions/deploy-pages@v4
+
+      - name: Publicar respaldo estatico en rama gh-pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./dist
+          publish_branch: gh-pages
