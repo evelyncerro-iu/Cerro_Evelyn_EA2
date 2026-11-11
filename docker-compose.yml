@@ -1,0 +1,13 @@
+version: '3.8'
+
+services:
+  servidor-catalogo:
+    build:
+      context: .
+      dockerfile: despliegue/Dockerfile
+    container_name: contenedor_catalogo_diosa_bq
+    ports:
+      - "8080:8080"
+    restart: unless-stopped
+    environment:
+      - ENTORNO=produccion
